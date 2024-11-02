@@ -1,0 +1,14 @@
+@import "./variables.css";
+@import "./z-index.css";
+@import "./animations.css";
+@import "./components/terminal.css";
+@import "./components/resize-handle.css";
+@import "./components/code.css";
+@import "./components/editor.css";
+@import "./components/toast.css";
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+}

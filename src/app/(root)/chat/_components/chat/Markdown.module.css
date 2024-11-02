@@ -1,0 +1,20 @@
+@custom-media --not-inside-actions :not(:has(.actions), .actions *);
+
+.MarkdownContent {
+  line-height: 1.6;
+  color: var(--bolt-elements-textPrimary);
+}
+
+.MarkdownContent > *:not(:last-child) {
+  margin-block-end: 16px;
+}
+
+.MarkdownContent :is(h1, h2, h3, h4, h5, h6):where(--not-inside-actions) {
+  margin-block-start: 24px;
+  margin-block-end: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--bolt-elements-textPrimary);
+}
+
+/* ... rest of the styles ... */

@@ -1,0 +1,25 @@
+:root {
+  --cm-backgroundColor: var(
+    --bolt-elements-editor-backgroundColor,
+    var(--bolt-elements-bg-depth-1)
+  );
+  --cm-textColor: var(
+    --bolt-elements-editor-textColor,
+    var(--bolt-elements-textPrimary)
+  );
+  /* ... rest of the root variables ... */
+}
+
+html[data-theme="light"] {
+  --bolt-elements-editor-gutter-textColor: #237893;
+  --bolt-elements-editor-gutter-activeLineTextColor: var(
+    --bolt-elements-textPrimary
+  );
+  /* ... rest of the light theme variables ... */
+}
+
+html[data-theme="dark"] {
+  --cm-backgroundColor: var(--bolt-elements-bg-depth-2);
+  --bolt-elements-editor-gutter-textColor: var(--bolt-elements-textTertiary);
+  /* ... rest of the dark theme variables ... */
+}
