@@ -27,6 +27,7 @@ export function useChatHistory({ chatId }: Props): UseChatHistoryReturn {
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const currentChatId = useRef<string | null>(null);
   console.log("initialMessages", initialMessages);
+
   useEffect(() => {
     if (!chatId) {
       workbenchStore.files.set({});
@@ -34,6 +35,7 @@ export function useChatHistory({ chatId }: Props): UseChatHistoryReturn {
       description.set(undefined);
       currentChatId.current = null;
       setInitialMessages([]);
+      setReady(true);
     }
   }, [chatId]);
 
@@ -51,11 +53,11 @@ export function useChatHistory({ chatId }: Props): UseChatHistoryReturn {
           description.set(chat.title || "");
           currentChatId.current = chat.id;
         } else {
-          toast.error(`no chat with ${chatId} found`);
+          toast.error(`No chat with ID ${chatId} found`);
           router.push("/chat");
         }
       } catch (error) {
-        console.log("🚀 ~ loadChat ~ error:", error);
+        console.error("Failed to load chat:", error);
         toast.error("Failed to load chat history");
       } finally {
         setReady(true);

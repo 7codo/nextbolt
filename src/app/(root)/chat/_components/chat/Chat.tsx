@@ -38,6 +38,7 @@ export function Chat({ chatId }: Props) {
 
   return (
     <ChatImpl
+      key={chatId || "new"}
       initialMessages={initialMessages}
       storeMessageHistory={storeMessageHistory}
     />

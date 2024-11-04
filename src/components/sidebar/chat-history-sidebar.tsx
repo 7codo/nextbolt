@@ -45,7 +45,7 @@ export function ChatHistorySidebar() {
             Recent Chats
           </div>
           <Button size="sm" asChild>
-            <Link href="/chat" prefetch={false}>
+            <Link href="/chat">
               <Plus size={14} />
               New Chat
             </Link>
