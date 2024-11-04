@@ -34,17 +34,8 @@ let shellHighlighterInstance: HighlighterGeneric<
 
 // Helper to initialize highlighter
 const getHighlighter = async () => {
-  if (typeof window === "undefined") return null;
-
   if (!shellHighlighterInstance) {
     shellHighlighterInstance = await createHighlighter(highlighterOptions);
-
-    // Store in window for HMR persistence
-    if (typeof window !== "undefined") {
-      if (window.__NEXT__HOT_DATA__) {
-        window.__NEXT__HOT_DATA__.shellHighlighter = shellHighlighterInstance;
-      }
-    }
   }
   return shellHighlighterInstance;
 };

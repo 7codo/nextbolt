@@ -11,7 +11,8 @@ import SwitchableStream from "@/app/(root)/chat/_lib/.server/llm/switchable-stre
 
 export const POST = async (request: Request) => {
   const { messages } = await request.json();
-  console.log("messages", messages);
+  console.log("🚀 ~ POST ~ messages:", messages);
+
   const stream = new SwitchableStream();
 
   try {
@@ -60,3 +61,22 @@ export const POST = async (request: Request) => {
     });
   }
 };
+
+/* Let's create a simple HTML file.
+
+<boltArtifact id="simple-html-file" title="Simple HTML File">
+  <boltAction type="file" filePath="index.html">
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Simple HTML File</title>
+      </head>
+      <body>
+        <h1>Hello, World!</h1>
+        <p>This is a simple HTML file.</p>
+      </body>
+    </html>
+  </boltAction>
+</boltArtifact> */

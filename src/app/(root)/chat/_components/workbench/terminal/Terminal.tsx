@@ -1,4 +1,3 @@
-import type { Theme } from "@/app/(root)/chat/_lib/stores/theme";
 import { createScopedLogger } from "@/app/(root)/chat/_lib/utils/logger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";

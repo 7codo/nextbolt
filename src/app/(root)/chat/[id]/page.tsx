@@ -1,21 +1,18 @@
-"use client";
 import dynamic from "next/dynamic";
 import { BaseChat } from "../_components/chat/BaseChat";
 import { Header } from "../_components/header/Header";
+import { Chat } from "../_components/chat/Chat";
 
-const Chat = dynamic(
-  () => import("../_components/chat/Chat").then((mod) => mod.Chat),
-  {
-    ssr: false,
-    loading: () => <BaseChat />,
-  }
-);
+type Props = {
+  params: Promise<{ id: string }>;
+};
 
-export default function Index() {
+export default async function Index({ params }: Props) {
+  const chatId = (await params).id;
+  console.log("chatId", chatId);
   return (
     <div className="flex flex-col h-full w-full">
-      <Header />
-      <Chat />
+      <Chat chatId={chatId} />
     </div>
   );
 }

@@ -1,17 +1,17 @@
 .BaseChat[data-chat-visible="false"] {
-  --workbench-inner-width: 100%;
-  --workbench-left: 0;
+  /* --workbench-inner-width: 100%;
+  --workbench-left: 0; */
 }
 
 .BaseChat[data-chat-visible="false"] .Chat {
-  --at-apply: bolt-ease-cubic-bezier;
+  /*   --at-apply: bolt-ease-cubic-bezier;
   transition-property: transform, opacity;
   transition-duration: 0.3s;
   will-change: transform, opacity;
   transform: translateX(-50%);
-  opacity: 0;
+  opacity: 0; */
 }
 
 .Chat {
-  opacity: 1;
+  /* opacity: 1; */
 }

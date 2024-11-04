@@ -5,7 +5,7 @@ import {
   useShortcuts,
   useSnapScroll,
 } from "@/app/(root)/chat/_lib/hooks";
-import { useChatHistory } from "@/app/(root)/chat/_lib/persistence";
+import { useChatHistory } from "@/app/(root)/chat/_lib/persistence/useChatHistory";
 import { chatStore } from "@/app/(root)/chat/_lib/stores/chat";
 import { workbenchStore } from "@/app/(root)/chat/_lib/stores/workbench";
 import { fileModificationsToHTML } from "@/app/(root)/chat/_lib/utils/diff";
@@ -18,34 +18,29 @@ import { useStore } from "@nanostores/react";
 import type { Message } from "ai";
 import { useChat } from "ai/react";
 import { useAnimate } from "framer-motion";
-import { useParams } from "next/navigation";
 import { memo, useEffect, useRef, useState } from "react";
 import { BaseChat } from "./BaseChat";
 import { toast } from "sonner";
 
 const logger = createScopedLogger("Chat");
-
-export function Chat() {
+type Props = {
+  chatId?: string;
+};
+export function Chat({ chatId }: Props) {
   renderLogger.trace("Chat");
-  const params = useParams<{ id: string }>();
-
   const { ready, initialMessages, storeMessageHistory } = useChatHistory({
-    mixedId: params.id,
+    chatId,
   });
 
-  useEffect(() => {
-    console.log("__NEXT__HOT_DATA__", window.__NEXT__HOT_DATA__);
-  }, []);
+  if (!ready) {
+    return <>Loading...</>;
+  }
 
   return (
-    <>
-      {ready && (
-        <ChatImpl
-          initialMessages={initialMessages}
-          storeMessageHistory={storeMessageHistory}
-        />
-      )}
-    </>
+    <ChatImpl
+      initialMessages={initialMessages}
+      storeMessageHistory={storeMessageHistory}
+    />
   );
 }
 
@@ -57,15 +52,11 @@ interface ChatProps {
 export const ChatImpl = memo(
   ({ initialMessages, storeMessageHistory }: ChatProps) => {
     useShortcuts();
-
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
 
     const { showChat } = useStore(chatStore);
-
     const [animationScope, animate] = useAnimate();
-
     const {
       messages,
       isLoading,
@@ -80,8 +71,8 @@ export const ChatImpl = memo(
         logger.error("Request failed\n\n", error);
         toast.error("There was an error processing your request");
       },
-      onFinish: () => {
-        logger.debug("Finished streaming");
+      onFinish: async (message, { usage }) => {
+        console.log("🚀 ~ usage:", usage);
       },
       initialMessages,
     });
@@ -89,29 +80,28 @@ export const ChatImpl = memo(
     const { enhancingPrompt, promptEnhanced, enhancePrompt, resetEnhancer } =
       usePromptEnhancer();
     const { parsedMessages, parseMessages } = useMessageParser();
-
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
 
     useEffect(() => {
+      setChatStarted(initialMessages.length > 0);
       chatStore.setKey("started", initialMessages.length > 0);
-    }, []);
+    }, [initialMessages.length]);
 
     useEffect(() => {
       parseMessages(messages, isLoading);
+    }, [messages, isLoading, parseMessages]);
 
-      if (messages.length > initialMessages.length) {
-        storeMessageHistory(messages).catch((error) =>
-          toast.error(error.message)
+    useEffect(() => {
+      if (messages.length > initialMessages.length && !isLoading) {
+        storeMessageHistory(messages).catch(() =>
+          toast.error("Failed to save message history")
         );
       }
-    }, [messages, isLoading, parseMessages]);
+    }, [messages, initialMessages.length, isLoading]);
 
     const scrollTextArea = () => {
       const textarea = textareaRef.current;
-
-      if (textarea) {
-        textarea.scrollTop = textarea.scrollHeight;
-      }
+      if (textarea) textarea.scrollTop = textarea.scrollHeight;
     };
 
     const abort = () => {
@@ -122,12 +112,9 @@ export const ChatImpl = memo(
 
     useEffect(() => {
       const textarea = textareaRef.current;
-
       if (textarea) {
         textarea.style.height = "auto";
-
         const scrollHeight = textarea.scrollHeight;
-
         textarea.style.height = `${Math.min(scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
         textarea.style.overflowY =
           scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
@@ -135,10 +122,7 @@ export const ChatImpl = memo(
     }, [input, textareaRef]);
 
     const runAnimation = async () => {
-      if (chatStarted) {
-        return;
-      }
-
+      if (chatStarted) return;
       await Promise.all([
         animate(
           "#examples",
@@ -151,99 +135,63 @@ export const ChatImpl = memo(
           { duration: 0.2, ease: cubicEasingFn }
         ),
       ]);
-
       chatStore.setKey("started", true);
-
       setChatStarted(true);
     };
 
-    const sendMessage = async (
-      _event: React.UIEvent,
-      messageInput?: string
-    ) => {
+    const sendMessage = async (messageInput?: string) => {
       const _input = messageInput || input;
-
-      if (_input.length === 0 || isLoading) {
-        return;
-      }
-
-      /**
-       * @note (delm) Usually saving files shouldn't take long but it may take longer if there
-       * many unsaved files. In that case we need to block user input and show an indicator
-       * of some kind so the user is aware that something is happening. But I consider the
-       * happy case to be no unsaved files and I would expect users to save their changes
-       * before they send another message.
-       */
+      if (!_input.length || isLoading) return;
       await workbenchStore.saveAllFiles();
 
       const fileModifications = workbenchStore.getFileModifcations();
-
       chatStore.setKey("aborted", false);
-
       runAnimation();
 
-      if (fileModifications !== undefined) {
+      if (fileModifications) {
         const diff = fileModificationsToHTML(fileModifications);
-
-        /**
-         * If we have file modifications we append a new user message manually since we have to prefix
-         * the user input with the file modifications and we don't want the new user input to appear
-         * in the prompt. Using `append` is almost the same as `handleSubmit` except that we have to
-         * manually reset the input and we'd have to manually pass in file attachments. However, those
-         * aren't relevant here.
-         */
         append({ role: "user", content: `${diff}\n\n${_input}` });
-
-        /**
-         * After sending a new message we reset all modifications since the model
-         * should now be aware of all the changes.
-         */
         workbenchStore.resetAllFileModifications();
       } else {
         append({ role: "user", content: _input });
       }
 
       setInput("");
-
       resetEnhancer();
-
       textareaRef.current?.blur();
     };
 
     const [messageRef, scrollRef] = useSnapScroll();
 
     return (
-      <BaseChat
-        ref={animationScope}
-        textareaRef={textareaRef}
-        input={input}
-        showChat={showChat}
-        chatStarted={chatStarted}
-        isStreaming={isLoading}
-        enhancingPrompt={enhancingPrompt}
-        promptEnhanced={promptEnhanced}
-        sendMessage={sendMessage}
-        messageRef={messageRef}
-        scrollRef={scrollRef}
-        handleInputChange={handleInputChange}
-        handleStop={abort}
-        messages={messages.map((message, i) => {
-          if (message.role === "user") {
-            return message;
-          }
-
-          return {
-            ...message,
-            content: parsedMessages[i] || "",
-          };
-        })}
-        enhancePrompt={() => {
-          enhancePrompt(input, (input) => {
-            setInput(input);
-            scrollTextArea();
-          });
-        }}
-      />
+      <>
+        <BaseChat
+          ref={animationScope}
+          textareaRef={textareaRef}
+          input={input}
+          showChat={showChat}
+          chatStarted={chatStarted}
+          isStreaming={isLoading}
+          enhancingPrompt={enhancingPrompt}
+          promptEnhanced={promptEnhanced}
+          sendMessage={sendMessage}
+          messageRef={messageRef}
+          scrollRef={scrollRef}
+          handleInputChange={handleInputChange}
+          handleStop={abort}
+          messages={messages.map((message, i) =>
+            message.role === "user"
+              ? message
+              : { ...message, content: parsedMessages[i] || "" }
+          )}
+          enhancePrompt={() => {
+            enhancePrompt(input, (newInput) => {
+              setInput(newInput);
+              scrollTextArea();
+            });
+          }}
+        />
+      </>
     );
   }
 );

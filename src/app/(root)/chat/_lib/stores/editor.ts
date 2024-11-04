@@ -1,7 +1,3 @@
-import type {
-  EditorDocument,
-  ScrollPosition,
-} from "@/app/(root)/chat/_components/editor/codemirror/CodeMirrorEditor";
 import {
   atom,
   computed,
@@ -9,8 +5,11 @@ import {
   type MapStore,
   type WritableAtom,
 } from "nanostores";
+import type {
+  EditorDocument,
+  ScrollPosition,
+} from "@/app/(root)/chat/_components/editor/codemirror/CodeMirrorEditor";
 import type { FileMap, FilesStore } from "./files";
-import { getPersistedStore } from "../utils/persistence-handler";
 
 export type EditorDocuments = Record<string, EditorDocument>;
 
@@ -19,40 +18,26 @@ type SelectedFile = WritableAtom<string | undefined>;
 export class EditorStore {
   #filesStore: FilesStore;
 
-  selectedFile: SelectedFile;
-  documents: MapStore<EditorDocuments>;
+  selectedFile: SelectedFile = atom<string | undefined>();
+  documents: MapStore<EditorDocuments> = map({});
 
-  currentDocument;
+  currentDocument = computed(
+    [this.documents, this.selectedFile],
+    (documents, selectedFile) => {
+      if (!selectedFile) {
+        return undefined;
+      }
+
+      return documents[selectedFile];
+    }
+  );
 
   constructor(filesStore: FilesStore) {
     this.#filesStore = filesStore;
-
-    this.selectedFile = getPersistedStore(
-      "selectedFile",
-      atom<string | undefined>()
-    );
-    this.documents = getPersistedStore("documents", map({}));
-
-    if (typeof window !== "undefined") {
-      window.__NEXT__HOT_DATA__ = {
-        documents: this.documents,
-        selectedFile: this.selectedFile,
-      };
-    }
-
-    this.currentDocument = computed(
-      [this.documents, this.selectedFile],
-      (documents, selectedFile) => {
-        if (!selectedFile) {
-          return undefined;
-        }
-        return documents[selectedFile];
-      }
-    );
   }
 
   setDocuments(files: FileMap) {
-    const previousDocuments = this.documents.get();
+    const previousDocuments = this.documents.value;
 
     this.documents.set(
       Object.fromEntries<EditorDocument>(

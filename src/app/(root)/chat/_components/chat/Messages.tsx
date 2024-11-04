@@ -1,11 +1,15 @@
 "use client";
-import type { Message } from "ai";
-import React from "react";
 
+import React from "react";
+import type { Message } from "ai";
+import { User } from "lucide-react";
+import { motion } from "framer-motion";
+
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AssistantMessage } from "./AssistantMessage";
 import { UserMessage } from "./UserMessage";
-import { cn } from "@/lib/utils";
-import { User } from "lucide-react";
 
 interface MessagesProps {
   ref?: React.RefCallback<HTMLDivElement>;
@@ -15,51 +19,57 @@ interface MessagesProps {
   messages?: Message[];
 }
 
-export const Messages = (props: MessagesProps) => {
-  const { id, isStreaming = false, messages = [] } = props;
-
+export default function MessagesCard({
+  id,
+  ref,
+  className,
+  isStreaming = false,
+  messages = [],
+}: MessagesProps) {
   return (
-    <div id={id} ref={props.ref} className={props.className}>
-      {messages.length > 0
-        ? messages.map((message, index) => {
-            const { role, content } = message;
-            const isUserMessage = role === "user";
-            const isFirst = index === 0;
-            const isLast = index === messages.length - 1;
+    <div id={id} ref={ref} className={cn("space-y-4", className)}>
+      {messages.map((message, index) => {
+        const { role, content } = message;
+        const isUserMessage = role === "user";
 
-            return (
-              <div
-                key={index}
-                className={cn(
-                  "flex gap-4 p-6 w-full rounded-[calc(0.75rem-1px)]",
-                  {
-                    "bg-bolt-elements-messages-background":
-                      isUserMessage || !isStreaming || (isStreaming && !isLast),
-                    "bg-gradient-to-b from-bolt-elements-messages-background from-30% to-transparent":
-                      isStreaming && isLast,
-                    "mt-4": !isFirst,
-                  }
-                )}
-              >
-                {isUserMessage && (
-                  <div className="flex items-center justify-center w-[34px] h-[34px] overflow-hidden bg-white text-gray-600 rounded-full shrink-0 self-start">
-                    <User className="w-6 h-6" />
-                  </div>
-                )}
-                <div className="grid grid-col-1 w-full">
+        return (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className={cn("overflow-hidden  shadow-none")}>
+              <CardContent className="p-4 gap-4 flex items-start flex-row">
+                <div className="pt-1 5">
                   {isUserMessage ? (
-                    <UserMessage content={content} />
+                    <Avatar className="size-4">
+                      <AvatarFallback>
+                        <User className="w-5 h-5" />
+                      </AvatarFallback>
+                    </Avatar>
                   ) : (
-                    <AssistantMessage content={content} />
+                    <Avatar className="size-4">
+                      <AvatarImage src="/ai-avatar.png" alt="AI Assistant" />
+                      <AvatarFallback>AI</AvatarFallback>
+                    </Avatar>
                   )}
                 </div>
-              </div>
-            );
-          })
-        : null}
+                {isUserMessage ? (
+                  <UserMessage content={content} />
+                ) : (
+                  <AssistantMessage content={content} />
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+      })}
       {isStreaming && (
-        <div className="text-center w-full text-bolt-elements-textSecondary i-svg-spinners:3-dots-fade text-4xl mt-4"></div>
+        <div className="flex justify-center">
+          <span className="loading loading-dots loading-md"></span>
+        </div>
       )}
     </div>
   );
-};
+}

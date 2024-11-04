@@ -1,4 +1,3 @@
-import type { Theme } from "@/app/(root)/chat/_lib/types/theme";
 import {
   acceptCompletion,
   autocompletion,

@@ -1,7 +1,6 @@
 import { Compartment, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
-import type { Theme } from "@/app/(root)/chat/_lib/types/theme.js";
 import type { EditorSettings } from "./CodeMirrorEditor.js";
 
 export const darkTheme = EditorView.theme({}, { dark: true });

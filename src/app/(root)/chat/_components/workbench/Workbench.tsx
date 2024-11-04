@@ -15,15 +15,14 @@ import {
 } from "@/app/(root)/chat/_lib/stores/workbench";
 import { cubicEasingFn } from "@/app/(root)/chat/_lib/utils/easings";
 import { renderLogger } from "@/app/(root)/chat/_lib/utils/logger";
-import { cn } from "@/lib/utils";
 import { useStore } from "@nanostores/react";
-import { motion, type HTMLMotionProps, type Variants } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
+import { Terminal, XCircle } from "lucide-react";
 import { computed } from "nanostores";
 import { memo, useCallback, useEffect } from "react";
+import { toast } from "sonner";
 import { EditorPanel } from "./EditorPanel";
 import { Preview } from "./Preview";
-import { Terminal, XCircle } from "lucide-react";
-import { toast } from "sonner";
 
 interface WorkspaceProps {
   chatStarted?: boolean;
@@ -43,23 +42,6 @@ const sliderOptions: SliderOptions<WorkbenchViewType> = {
   },
 };
 
-const workbenchVariants = {
-  closed: {
-    width: 0,
-    transition: {
-      duration: 0.2,
-      ease: cubicEasingFn,
-    },
-  },
-  open: {
-    width: "var(--workbench-width)",
-    transition: {
-      duration: 0.2,
-      ease: cubicEasingFn,
-    },
-  },
-} satisfies Variants;
-
 export const Workbench = memo(
   ({ chatStarted, isStreaming }: WorkspaceProps) => {
     renderLogger.trace("Workbench");
@@ -67,7 +49,7 @@ export const Workbench = memo(
     const hasPreview = useStore(
       computed(workbenchStore.previews, (previews) => previews.length > 0)
     );
-    const showWorkbench = useStore(workbenchStore.showWorkbench);
+
     const selectedFile = useStore(workbenchStore.selectedFile);
     const currentDocument = useStore(workbenchStore.currentDocument);
     const unsavedFiles = useStore(workbenchStore.unsavedFiles);
@@ -110,84 +92,71 @@ export const Workbench = memo(
       workbenchStore.resetCurrentDocument();
     }, []);
 
+    console.log("WORKBENCH: currentDocument", currentDocument);
+    console.log("WORKBENCH: files", JSON.stringify(files));
+    console.log("WORKBENCH: selectedFile", selectedFile);
+    console.log("WORKBENCH: isStreaming", isStreaming);
+
     return (
       chatStarted && (
-        <motion.div
-          initial="closed"
-          animate={showWorkbench ? "open" : "closed"}
-          variants={workbenchVariants}
-          className="z-workbench"
-        >
-          <div
-            className={cn(
-              "fixed top-[calc(var(--header-height)+1.5rem)] bottom-6 w-[var(--workbench-inner-width)] mr-4 z-0 transition-[left,width] duration-200 bolt-ease-cubic-bezier",
-              {
-                "left-[var(--workbench-left)]": showWorkbench,
-                "left-[100%]": !showWorkbench,
-              }
+        <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor  overflow-hidden">
+          <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
+            <Slider
+              selected={selectedView}
+              options={sliderOptions}
+              setSelected={setSelectedView}
+            />
+            <div className="ml-auto" />
+            {selectedView === "code" && (
+              <PanelHeaderButton
+                className="mr-1 text-sm"
+                onClick={() => {
+                  workbenchStore.toggleTerminal(
+                    !workbenchStore.showTerminal.get()
+                  );
+                }}
+              >
+                <Terminal className="w-4 h-4 text-white" />
+                Toggle Terminal
+              </PanelHeaderButton>
             )}
-          >
-            <div className="absolute inset-0 px-6">
-              <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor shadow-sm rounded-lg overflow-hidden">
-                <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
-                  <Slider
-                    selected={selectedView}
-                    options={sliderOptions}
-                    setSelected={setSelectedView}
-                  />
-                  <div className="ml-auto" />
-                  {selectedView === "code" && (
-                    <PanelHeaderButton
-                      className="mr-1 text-sm"
-                      onClick={() => {
-                        workbenchStore.toggleTerminal(
-                          !workbenchStore.showTerminal.get()
-                        );
-                      }}
-                    >
-                      <Terminal className="w-4 h-4 text-white" />
-                      Toggle Terminal
-                    </PanelHeaderButton>
-                  )}
-                  <IconButton
-                    className="-mr-1"
-                    size="xl"
-                    onClick={() => {
-                      workbenchStore.showWorkbench.set(false);
-                    }}
-                  >
-                    <XCircle className="w-4 h-4 text-white" />
-                  </IconButton>
-                </div>
-                <div className="relative flex-1 overflow-hidden">
-                  <View
-                    initial={{ x: selectedView === "code" ? 0 : "-100%" }}
-                    animate={{ x: selectedView === "code" ? 0 : "-100%" }}
-                  >
-                    <EditorPanel
-                      editorDocument={currentDocument}
-                      isStreaming={isStreaming}
-                      selectedFile={selectedFile}
-                      files={files}
-                      unsavedFiles={unsavedFiles}
-                      onFileSelect={onFileSelect}
-                      onEditorScroll={onEditorScroll}
-                      onEditorChange={onEditorChange}
-                      onFileSave={onFileSave}
-                      onFileReset={onFileReset}
-                    />
-                  </View>
-                  <View
-                    initial={{ x: selectedView === "preview" ? 0 : "100%" }}
-                    animate={{ x: selectedView === "preview" ? 0 : "100%" }}
-                  >
-                    <Preview />
-                  </View>
-                </div>
-              </div>
-            </div>
+            <IconButton
+              className="-mr-1"
+              size="xl"
+              onClick={() => {
+                workbenchStore.showWorkbench.set(false);
+              }}
+            >
+              <XCircle className="w-4 h-4 text-white" />
+            </IconButton>
           </div>
-        </motion.div>
+          <div className="relative flex-1 overflow-hidden">
+            <View
+              initial={{ x: selectedView === "code" ? 0 : "-100%" }}
+              animate={{ x: selectedView === "code" ? 0 : "-100%" }}
+              /* className="h-full" */
+            >
+              <EditorPanel
+                editorDocument={currentDocument}
+                isStreaming={isStreaming}
+                selectedFile={selectedFile}
+                files={files}
+                unsavedFiles={unsavedFiles}
+                onFileSelect={onFileSelect}
+                onEditorScroll={onEditorScroll}
+                onEditorChange={onEditorChange}
+                onFileSave={onFileSave}
+                onFileReset={onFileReset}
+              />
+            </View>
+            <View
+              initial={{ x: selectedView === "preview" ? 0 : "100%" }}
+              animate={{ x: selectedView === "preview" ? 0 : "100%" }}
+            >
+              <Preview />
+            </View>
+          </div>
+        </div>
       )
     );
   }

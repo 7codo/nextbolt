@@ -1,5 +1,10 @@
-"use client";
-import { unreachable } from "@/app/(root)/chat/_lib/utils/unreachable";
+import {
+  atom,
+  map,
+  type MapStore,
+  type ReadableAtom,
+  type WritableAtom,
+} from "nanostores";
 import type {
   EditorDocument,
   ScrollPosition,
@@ -9,20 +14,13 @@ import type {
   ActionCallbackData,
   ArtifactCallbackData,
 } from "@/app/(root)/chat/_lib/runtime/message-parser";
-import type { ITerminal } from "@/app/(root)/chat/_lib/types/terminal";
 import { webcontainer } from "@/app/(root)/chat/_lib/webcontainer";
-import {
-  atom,
-  map,
-  type MapStore,
-  type ReadableAtom,
-  type WritableAtom,
-} from "nanostores";
+import type { ITerminal } from "@/app/(root)/chat/_lib/types/terminal";
+import { unreachable } from "@/app/(root)/chat/_lib/utils/unreachable";
 import { EditorStore } from "./editor";
 import { FilesStore, type FileMap } from "./files";
 import { PreviewsStore } from "./previews";
 import { TerminalStore } from "./terminal";
-import { getPersistedStore } from "../utils/persistence-handler";
 
 export interface ArtifactState {
   id: string;
@@ -43,31 +41,13 @@ export class WorkbenchStore {
   #editorStore = new EditorStore(this.#filesStore);
   #terminalStore = new TerminalStore(webcontainer);
 
-  artifacts: Artifacts = getPersistedStore("artifacts", map({}));
-  showWorkbench: WritableAtom<boolean> = getPersistedStore(
-    "showWorkbench",
-    atom(false)
-  );
-  currentView: WritableAtom<WorkbenchViewType> = getPersistedStore(
-    "currentView",
-    atom("code")
-  );
-  unsavedFiles: WritableAtom<Set<string>> = getPersistedStore(
-    "unsavedFiles",
-    atom(new Set<string>())
-  );
+  artifacts: Artifacts = map({});
+
+  showWorkbench: WritableAtom<boolean> = atom(false);
+  currentView: WritableAtom<WorkbenchViewType> = atom("code");
+  unsavedFiles: WritableAtom<Set<string>> = atom(new Set<string>());
   modifiedFiles = new Set<string>();
   artifactIdList: string[] = [];
-
-  constructor() {
-    if (typeof window !== "undefined") {
-      window.__NEXT__HOT_DATA__ = window.__NEXT__HOT_DATA__ || {};
-      window.__NEXT__HOT_DATA__.artifacts = this.artifacts;
-      window.__NEXT__HOT_DATA__.unsavedFiles = this.unsavedFiles;
-      window.__NEXT__HOT_DATA__.showWorkbench = this.showWorkbench;
-      window.__NEXT__HOT_DATA__.currentView = this.currentView;
-    }
-  }
 
   get previews() {
     return this.#previewsStore.previews;

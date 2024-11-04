@@ -13,7 +13,7 @@ export const Preview = memo(() => {
   const hasSelectedPreview = useRef(false);
   const previews = useStore(workbenchStore.previews);
   const activePreview = previews[activePreviewIndex];
-
+  console.log("activePreview", activePreview);
   const [url, setUrl] = useState("");
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
 

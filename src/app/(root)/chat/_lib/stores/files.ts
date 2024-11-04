@@ -1,14 +1,13 @@
-import { bufferWatchEvents } from "@/app/(root)/chat/_lib/utils/buffer";
-import { WORK_DIR } from "@/app/(root)/chat/_lib/utils/constants";
-import { computeFileModifications } from "@/app/(root)/chat/_lib/utils/diff";
-import { createScopedLogger } from "@/app/(root)/chat/_lib/utils/logger";
-import { unreachable } from "@/app/(root)/chat/_lib/utils/unreachable";
 import type { PathWatcherEvent, WebContainer } from "@webcontainer/api";
 import { getEncoding } from "istextorbinary";
 import { map, type MapStore } from "nanostores";
 import { Buffer } from "node:buffer";
 import * as nodePath from "node:path";
-import { getPersistedStore } from "../utils/persistence-handler";
+import { bufferWatchEvents } from "@/app/(root)/chat/_lib/utils/buffer";
+import { WORK_DIR } from "@/app/(root)/chat/_lib/utils/constants";
+import { computeFileModifications } from "@/app/(root)/chat/_lib/utils/diff";
+import { createScopedLogger } from "@/app/(root)/chat/_lib/utils/logger";
+import { unreachable } from "@/app/(root)/chat/_lib/utils/unreachable";
 
 const logger = createScopedLogger("FilesStore");
 
@@ -41,12 +40,12 @@ export class FilesStore {
    * Needs to be reset when the user sends another message and all changes have to be submitted
    * for the model to be aware of the changes.
    */
-  #modifiedFiles: Map<string, string>;
+  #modifiedFiles: Map<string, string> = new Map();
 
   /**
    * Map of files that matches the state of WebContainer.
    */
-  files: MapStore<FileMap>;
+  files: MapStore<FileMap> = map({});
 
   get filesCount() {
     return this.#size;
@@ -54,18 +53,6 @@ export class FilesStore {
 
   constructor(webcontainerPromise: Promise<WebContainer>) {
     this.#webcontainer = webcontainerPromise;
-
-    // Initialize stores with persisted values or create new ones
-    this.files = getPersistedStore("files", map({}));
-    this.#modifiedFiles = getPersistedStore("modifiedFiles", new Map());
-
-    // Persist stores for HMR
-    if (typeof window !== "undefined") {
-      window.__NEXT__HOT_DATA__ = {
-        files: this.files,
-        modifiedFiles: this.#modifiedFiles,
-      };
-    }
 
     this.#init();
   }

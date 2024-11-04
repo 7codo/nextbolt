@@ -1,121 +1,105 @@
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+"use client";
+import { getChatById, upsertChat } from "@/lib/db/queries/chat-queries";
+import { Message } from "ai";
 import { atom } from "nanostores";
-import type { Message } from "ai";
-import { workbenchStore } from "@/app/(root)/chat/_lib/stores/workbench";
-import {
-  getMessages,
-  getNextId,
-  getUrlId,
-  openDatabase,
-  setMessages,
-} from "./db";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { workbenchStore } from "../stores/workbench";
+import { chatStore } from "../stores/chat";
 
-export interface ChatHistoryItem {
-  id: string;
-  urlId?: string;
-  description?: string;
-  messages: Message[];
-  timestamp: string;
+interface UseChatHistoryReturn {
+  ready: boolean;
+  initialMessages: Message[];
+  storeMessageHistory: (messages: Message[]) => Promise<void>;
 }
 
-const persistenceEnabled =
-  process.env.NEXT_PUBLIC_DISABLE_PERSISTENCE !== "true";
-
-export const db = persistenceEnabled ? await openDatabase() : undefined;
-
-export const chatId = atom<string | undefined>(undefined);
 export const description = atom<string | undefined>(undefined);
 
-export function useChatHistory({ mixedId }: { mixedId: string }) {
-  const { push } = useRouter();
+type Props = {
+  chatId?: string;
+};
 
+export function useChatHistory({ chatId }: Props): UseChatHistoryReturn {
+  console.log("🚀 ~ useChatHistory ~ chatId:", chatId);
+  const router = useRouter();
+  const [ready, setReady] = useState(!chatId);
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
-  const [ready, setReady] = useState<boolean>(false);
-  const [urlId, setUrlId] = useState<string | undefined>();
+  const currentChatId = useRef<string | null>(null);
+  console.log("initialMessages", initialMessages);
+  useEffect(() => {
+    if (!chatId) {
+      workbenchStore.files.set({});
+      chatStore.setKey("started", false);
+      description.set(undefined);
+      currentChatId.current = null;
+      setInitialMessages([]);
+    }
+  }, [chatId]);
 
   useEffect(() => {
-    if (!db) {
-      setReady(true);
-
-      if (persistenceEnabled) {
-        toast.error(`Chat persistence is unavailable`);
-      }
-
-      return;
-    }
-
-    if (mixedId) {
-      getMessages(db, mixedId)
-        .then((storedMessages) => {
-          if (storedMessages && storedMessages.messages.length > 0) {
-            setInitialMessages(storedMessages.messages);
-            setUrlId(storedMessages.urlId);
-            description.set(storedMessages.description);
-            chatId.set(storedMessages.id);
-          } else {
-            push(`/`);
-          }
-
-          setReady(true);
-        })
-        .catch((error) => {
-          toast.error(error.message);
-        });
-    }
-  }, []);
-
-  return {
-    ready: !mixedId || ready,
-    initialMessages,
-    storeMessageHistory: async (messages: Message[]) => {
-      if (!db || messages.length === 0) {
+    const loadChat = async () => {
+      if (!chatId) {
+        setReady(true);
         return;
       }
 
-      const { firstArtifact } = workbenchStore;
-
-      if (!urlId && firstArtifact?.id) {
-        const urlId = await getUrlId(db, firstArtifact.id);
-
-        navigateChat(urlId);
-        setUrlId(urlId);
-      }
-
-      if (!description.get() && firstArtifact?.title) {
-        description.set(firstArtifact?.title);
-      }
-
-      if (initialMessages.length === 0 && !chatId.get()) {
-        const nextId = await getNextId(db);
-
-        chatId.set(nextId);
-
-        if (!urlId) {
-          navigateChat(nextId);
+      try {
+        const chat = (await getChatById(chatId))?.data;
+        if (chat) {
+          setInitialMessages(chat.messages as Message[]);
+          description.set(chat.title || "");
+          currentChatId.current = chat.id;
+        } else {
+          toast.error(`no chat with ${chatId} found`);
+          router.push("/chat");
         }
+      } catch (error) {
+        console.log("🚀 ~ loadChat ~ error:", error);
+        toast.error("Failed to load chat history");
+      } finally {
+        setReady(true);
       }
+    };
 
-      await setMessages(
-        db,
-        chatId.get() as string,
-        messages,
-        urlId,
-        description.get()
-      );
-    },
+    loadChat();
+  }, [chatId, router]);
+
+  const storeMessageHistory = async (messages: Message[]) => {
+    if (messages.length === 0) return;
+
+    try {
+      const { firstArtifact } = workbenchStore;
+      const title = firstArtifact?.title || messages[0].content.slice(0, 50);
+
+      if (!currentChatId.current) {
+        // Create new chat
+        currentChatId.current = crypto.randomUUID();
+        await upsertChat({
+          id: currentChatId.current,
+          title,
+          messages,
+        });
+
+        // Update URL without full page reload
+        window.history.replaceState(null, "", `/chat/${currentChatId.current}`);
+      } else {
+        // Update existing chat
+        await upsertChat({
+          id: currentChatId.current,
+          title,
+          messages,
+        });
+      }
+    } catch (error) {
+      console.log("🚀 ~ storeMessageHistory ~ error:", error);
+      toast.error("Failed to save chat history");
+    }
   };
-}
 
-function navigateChat(nextId: string) {
-  /**
-   * FIXME: Using the intended navigate function causes a rerender for <Chat /> that breaks the app.
-   *
-   * `navigate(`/chat/${nextId}`, { replace: true });`
-   */
-  const url = new URL(window.location.href);
-  url.pathname = `/chat/${nextId}`;
-
-  window.history.replaceState({}, "", url);
+  return {
+    ready,
+    initialMessages,
+    storeMessageHistory,
+  };
 }

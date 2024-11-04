@@ -11,7 +11,6 @@ import { PanelHeader } from "@/app/(root)/chat/_components/ui/PanelHeader";
 import { PanelHeaderButton } from "@/app/(root)/chat/_components/ui/PanelHeaderButton";
 import { shortcutEventEmitter } from "@/app/(root)/chat/_lib/hooks";
 import type { FileMap } from "@/app/(root)/chat/_lib/stores/files";
-import { themeStore } from "@/app/(root)/chat/_lib/stores/theme";
 import { workbenchStore } from "@/app/(root)/chat/_lib/stores/workbench";
 import { WORK_DIR } from "@/app/(root)/chat/_lib/utils/constants";
 import { renderLogger } from "@/app/(root)/chat/_lib/utils/logger";
@@ -37,6 +36,7 @@ import { IconButton } from "../ui/IconButton";
 import { FileBreadcrumb } from "./FileBreadcrumb";
 import { FileTree } from "./FileTree";
 import { Terminal, type TerminalRef } from "./terminal/Terminal";
+import { useTheme } from "next-themes";
 
 interface EditorPanelProps {
   files?: FileMap;
@@ -71,8 +71,9 @@ export const EditorPanel = memo(
     onFileReset,
   }: EditorPanelProps) => {
     renderLogger.trace("EditorPanel");
+    console.log("selectedFile", selectedFile);
+    const { theme } = useTheme();
 
-    const theme = useStore(themeStore);
     const showTerminal = useStore(workbenchStore.showTerminal);
 
     const terminalRefs = useRef<Array<TerminalRef | null>>([]);
@@ -98,6 +99,12 @@ export const EditorPanel = memo(
     }, [editorDocument, unsavedFiles]);
 
     useEffect(() => {
+      for (const ref of Object.values(terminalRefs.current)) {
+        ref?.reloadStyles();
+      }
+    }, [theme]);
+
+    useEffect(() => {
       const unsubscribeFromEventEmitter = shortcutEventEmitter.on(
         "toggleTerminal",
         () => {
@@ -105,15 +112,8 @@ export const EditorPanel = memo(
         }
       );
 
-      const unsubscribeFromThemeStore = themeStore.subscribe(() => {
-        for (const ref of Object.values(terminalRefs.current)) {
-          ref?.reloadStyles();
-        }
-      });
-
       return () => {
         unsubscribeFromEventEmitter();
-        unsubscribeFromThemeStore();
       };
     }, []);
 
@@ -193,7 +193,7 @@ export const EditorPanel = memo(
               </PanelHeader>
               <div className="h-full flex-1 overflow-hidden">
                 <CodeMirrorEditor
-                  theme={theme}
+                  theme={(theme as Theme) || "system"}
                   editable={!isStreaming && editorDocument !== undefined}
                   settings={editorSettings}
                   doc={editorDocument}
@@ -280,7 +280,7 @@ export const EditorPanel = memo(
                     onTerminalResize={(cols, rows) =>
                       workbenchStore.onTerminalResize(cols, rows)
                     }
-                    theme={theme}
+                    theme={(theme as Theme) || "system"}
                   />
                 );
               })}
